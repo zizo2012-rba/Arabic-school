@@ -41,7 +41,7 @@
         <div class="avatar">🦉</div>
         <div class="instruction">اضغط على المايك واقرأ العبارة كاملة بصوت واضح:</div>
         <div class="content-box">"عادَ طارِقٌ مِنَ الْمَدْرَسَةِ جائِعاً فِي الْمَسَاءِ، ثُمَّ جَلَسَ مَعَ أُسْرَتِهِ لِيَتَنَاوَلَ طَعَاماً لَذِيذاً وَمُفِيداً."</div>
-        <button class="action-btn mic-btn" id="micBtn" onclick="startSpeech()">🎤 اضغط وابدأ القراءة</button>
+        <button class="action-btn mic-btn" id="micBtn" onclick="toggleSpeech()">🎤 اضغط وابدأ القراءة</button>
         <div class="result-msg" id="result1"></div>
     </div>
 
@@ -75,7 +75,7 @@
     <div class="step-card" id="stepFinal">
         <div class="avatar" id="finalIcon">🎉</div>
         <div class="content-box" id="finalMessage">تهانينا يا بطل!</div>
-        <button class="action-btn" id="nextLevelBtn" style="display:none;" onclick="alert('رائع! سيتم فتح المستوى التالي')">🔓 الانتقال للدرس التالي</button>
+        <button class="action-btn" id="nextLevelBtn" style="display:none;" onclick="goToNextLevel()">🔓 الانتقال للدرس التالي</button>
         <button class="action-btn" id="retryLevelBtn" style="display:none; background:#ff4b4b; box-shadow:0 4px 0 #ea2b2b;" onclick="location.reload()">🔄 إعادة المحاولة لتعديل الأخطاء</button>
     </div>
 </div>
@@ -85,6 +85,8 @@
     let currentStep = 1;
     let selectedSyllables = [];
     const maxErrorsAllowed = 3;
+    let recognition;
+    let isRecording = false;
 
     const cleanReadingTarget = "عاد طارق من المدرسه جائعا في المساء ثم جلس مع اسرته ليتناول طعاما لذيذا ومفيدا";
 
@@ -106,46 +108,72 @@
         }
     }
 
-    function startSpeech() {
+    function toggleSpeech() {
         window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!window.SpeechRecognition) { 
             alert("المتصفح لا يدعم التعرف على الصوت، سيتم نقلك للمحطة التالية تلقائياً.");
             moveStep(2); 
             return; 
         }
-        
-        const recognition = new SpeechRecognition();
-        recognition.lang = "ar";
+
         const btn = document.getElementById("micBtn");
         const res = document.getElementById("result1");
 
-        btn.innerText = "🛑 جاري الاستماع...";
-        btn.classList.add("recording");
-        recognition.start();
+        if (!isRecording) {
+            recognition = new SpeechRecognition();
+            recognition.lang = "ar";
+            recognition.continuous = false;
+            recognition.interimResults = false;
 
-        recognition.onresult = (event) => {
-            const studentText = event.results[0][0].transcript;
-            const cleanStudent = studentText.replace(/[^\u0621-\u064A\s]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").trim();
-            res.style.display = "block";
+            recognition.onstart = () => {
+                isRecording = true;
+                btn.innerText = "🛑 جاري الاستماع.. اضغط للإيقاف";
+                btn.classList.add("recording");
+            };
 
-            if(cleanStudent === cleanReadingTarget) {
-                res.className = "result-msg success";
-                res.innerHTML = "🎉 قراءة ممتازة! انتقل للمحطة التالية.";
-                setTimeout(() => moveStep(2), 2000);
-            } else {
-                totalErrors++;
-                updateErrors();
-                res.className = "result-msg error";
-                res.innerHTML = "⚠️ أخطأت في بعض الكلمات. جرب المحطة التالية.";
-                setTimeout(() => moveStep(2), 2500);
-            }
-        };
-        
-        recognition.onerror = () => { 
+            recognition.onresult = (event) => {
+                const studentText = event.results[0][0].transcript;
+                const cleanStudent = studentText.replace(/[^\u0621-\u064A\s]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").trim();
+                res.style.display = "block";
+
+                if(cleanStudent === cleanReadingTarget) {
+                    res.className = "result-msg success";
+                    res.innerHTML = "🎉 قراءة ممتازة! انتقل للمحطة التالية.";
+                    setTimeout(() => moveStep(2), 2000);
+                } else {
+                    totalErrors++;
+                    updateErrors();
+                    res.className = "result-msg error";
+                    res.innerHTML = "⚠️ أخطأت في بعض الكلمات. جرب المحطة التالية.";
+                    setTimeout(() => moveStep(2), 2500);
+                }
+                stopRecordingState();
+            };
+
+            recognition.onerror = () => { 
+                stopRecordingState();
+                moveStep(2); 
+            };
+
+            recognition.onend = () => {
+                stopRecordingState();
+            };
+
+            recognition.start();
+        } else {
+            if(recognition) recognition.stop();
+            stopRecordingState();
+            moveStep(2);
+        }
+    }
+
+    function stopRecordingState() {
+        isRecording = false;
+        const btn = document.getElementById("micBtn");
+        if(btn) {
             btn.innerText = "🎤 اضغط وابدأ القراءة";
             btn.classList.remove("recording");
-            moveStep(2); 
-        };
+        }
     }
 
     function selectSyllable(btn, text) {
@@ -174,9 +202,15 @@
     }
 
     function playAudioText() {
-        const msg = new SpeechSynthesisUtterance("طَعَاماً لَذِيذاً");
-        msg.lang = "ar";
-        window.speechSynthesis.speak(msg);
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); 
+            const msg = new SpeechSynthesisUtterance("طَعَاماً لَذِيذاً");
+            msg.lang = "ar-SA"; 
+            msg.rate = 0.85; 
+            window.speechSynthesis.speak(msg);
+        } else {
+            alert("خاصية نطق الصوت غير مدعومة في هذا المتصفح.");
+        }
     }
 
     function checkDictation() {
@@ -210,6 +244,12 @@
             msgBox.innerHTML = `المحاولة رائعة، لكن أخطاءك بلغت ${totalErrors}.<br>دعنا نعد المحاولة لتثبيت المهارات!`;
             document.getElementById("retryLevelBtn").style.display = "block";
         }
+    }
+
+    function goToNextLevel() {
+        alert("رائع! جاري نقلك إلى المستوى التالي البصري البنيوي...");
+        // ضع رابط صفحة المستوى الثاني هنا بدلاً من الرابط الحالي عند الرغبة
+        window.location.href = "https://zizo2012-rba.github.io/Arabic-school/"; 
     }
 </script>
 </body>
