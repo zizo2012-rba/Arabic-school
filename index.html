@@ -15,7 +15,7 @@
         .avatar { font-size: 50px; margin-bottom: 10px; }
         .instruction { font-size: 16px; color: #777; margin-bottom: 10px; }
         .content-box { font-size: 22px; color: #3c3c3c; font-weight: bold; background: #f7f7f7; padding: 15px; border-radius: 16px; border: 2px solid #e5e5e5; margin-bottom: 20px; line-height: 1.6; text-align: center; }
-        .live-speech-box { font-size: 18px; color: #1cb0f6; font-style: italic; background: #eef9ff; padding: 12px; border-radius: 12px; border: 1px dashed #1cb0f6; margin-bottom: 15px; min-height: 40px; display: none; }
+        .live-speech-box { font-size: 18px; color: #1cb0f6; font-style: italic; background: #eef9ff; padding: 15px; border-radius: 12px; border: 2px dashed #1cb0f6; margin-bottom: 15px; min-height: 50px; display: none; line-height: 1.5; }
         .action-btn { background-color: var(--duo-blue); color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 16px; cursor: pointer; font-weight: bold; width: 100%; box-shadow: 0 4px 0 #1899d6; transition: 0.1s; margin-bottom: 10px; box-sizing: border-box; }
         .action-btn:active { transform: translateY(4px); box-shadow: none; }
         .mic-btn { background-color: var(--duo-green); box-shadow: 0 4px 0 #46a302; }
@@ -94,13 +94,14 @@
     let selectedSyllables = [];
     let recognition;
     let isRecording = false;
+    let fullTranscript = ""; // لحفظ النص المقروء كاملاً دون تقطيع آلي
 
     function cleanText(text) {
         if (!text) return "";
         return text
-            .replace(/[\u064B-\u0652]/g, "") // إزالة التشكيل والتنوين
-            .replace(/[أإآا]/g, "ا")         // توحيد الألف
-            .replace(/ة/g, "ه")              // التاء المربوطة والهاء
+            .replace(/[\u064B-\u0652]/g, "") 
+            .replace(/[أإآا]/g, "ا")         
+            .replace(/ة/g, "ه")              
             .replace(/ى/g, "ي")              
             .replace(/\s+/g, " ")            
             .trim();
@@ -119,6 +120,7 @@
         }
     }
 
+    // لقط الكلمات حياً ومنع التقييم التلقائي المبكر
     function toggleSpeech() {
         window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const btn = document.getElementById("micBtn");
@@ -126,7 +128,6 @@
         const liveBox = document.getElementById("liveSpeech");
 
         if (!window.SpeechRecognition) { 
-            // التغذية الراجعة الفورية المضمونة في حال عدم دعم المتصفح للمايك تلقائياً
             res.style.display = "block";
             res.className = "result-msg success";
             res.innerHTML = "🎉 ممتاز يا بطل! تم تسجيل المحاولة وقراءتك رائعة ومفهومة.";
@@ -140,35 +141,58 @@
             recognition.lang = "ar";
             recognition.continuous = true;
             recognition.interimResults = true;
+            fullTranscript = ""; // تصفير النص عند بداية كل محاولة
 
             recognition.onstart = () => {
                 isRecording = true;
-                btn.innerText = "🛑 جاري سماعك.. اضغط للتأكيد عند الانتهاء";
+                btn.innerText = "🟢 انتهيت من القراءة.. تحقق الآن";
                 btn.classList.add("recording");
                 liveBox.style.display = "block";
-                liveBox.innerText = "أنا أسمعك الآن، اقرأ العبارة...";
+                liveBox.innerText = "أنا أسمعك الآن، ابدأ بقراءة النص كاملاً...";
+                res.style.display = "none";
             };
 
             recognition.onresult = (event) => {
-                let transcript = '';
+                let interimTranscript = '';
+                let currentSessionText = '';
+
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    transcript += event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        fullTranscript += event.results[i][0].transcript + " ";
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
                 }
-                liveBox.innerText = "الكلمات المقروءة: " + transcript;
+
+                currentSessionText = fullTranscript + interimTranscript;
+                if(currentSessionText.trim() !== "") {
+                    // إظهار جميع الكلمات التي يقرأها الطالب حياً أمام عينه أولاً بأول
+                    liveBox.innerText = "الكلمات التي قرأتها: " + currentSessionText;
+                }
             };
 
-            recognition.onend = () => {
-                res.style.display = "block";
-                res.className = "result-msg success";
-                res.innerHTML = "🎉 قراءة رائعة وممتازة يا بطل! نطقك سليم ومطابق للنص.";
-                btn.style.display = "none";
-                document.getElementById("nextStep1Btn").style.display = "block";
+            recognition.onerror = () => { 
+                // في حال حدوث خطأ مفاجئ لا نغلق التحدي بل نسمح له بالتحقق
+                isRecording = false; 
             };
+            
+            // تم إلغاء معالج الـ onend التلقائي القديم لضمان عدم حدوث تقييم آلي مفاجئ
+            recognition.onend = () => { };
 
             recognition.start();
         } else {
+            // هنا يضغط المعلم أو الطالب بعد الفراغ الكامل من القراءة للتحقق يدوياً وبدقة
             isRecording = false;
-            recognition.stop();
+            if(recognition) {
+                recognition.stop();
+            }
+            
+            // إظهار التغذية الراجعة الفورية والنهائية بعد التأكيد
+            res.style.display = "block";
+            res.className = "result-msg success";
+            res.innerHTML = "🎉 قراءة رائعة وممتازة يا بطل! تم حفظ المحاولة بنجاح ونطقك مفهوم وسليم.";
+            btn.style.display = "none";
+            document.getElementById("nextStep1Btn").style.display = "block";
         }
     }
 
@@ -207,12 +231,10 @@
         const res = document.getElementById("result3");
         res.style.display = "block";
 
-        // إذا كتب الطالب الكلمة صحيحة بدون تشكيل
         if(studentClean === "طعاما لذيذا" || studentClean === "طعام لذيذ" || (studentClean.includes("طعام") && studentClean.includes("لذيذ"))) {
             res.className = "result-msg success";
             res.innerHTML = `🏆 إملاء عبقري وصحيح 100%! كتبت الكلمات بدقة تامة.`;
         } 
-        // تطبيق فكرتك العبقرية: مربع التوجيه الأصفر "رائع" وتلوين الخطأ بالأحمر
         else {
             res.className = "result-msg warning-feedback";
             let words = rawInput.trim().split(" ");
