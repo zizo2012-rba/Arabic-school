@@ -15,7 +15,6 @@
         .avatar { font-size: 50px; margin-bottom: 10px; }
         .instruction { font-size: 16px; color: #777; margin-bottom: 10px; }
         .content-box { font-size: 22px; color: #3c3c3c; font-weight: bold; background: #f7f7f7; padding: 15px; border-radius: 16px; border: 2px solid #e5e5e5; margin-bottom: 20px; line-height: 1.6; text-align: center; }
-        .live-speech-box { font-size: 18px; color: #1cb0f6; font-style: italic; background: #eef9ff; padding: 10px; border-radius: 12px; border: 1px dashed #1cb0f6; margin-bottom: 15px; min-height: 30px; display: none; }
         .action-btn { background-color: var(--duo-blue); color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 16px; cursor: pointer; font-weight: bold; width: 100%; box-shadow: 0 4px 0 #1899d6; transition: 0.1s; margin-bottom: 10px; box-sizing: border-box; }
         .action-btn:active { transform: translateY(4px); box-shadow: none; }
         .mic-btn { background-color: var(--duo-green); box-shadow: 0 4px 0 #46a302; }
@@ -27,6 +26,7 @@
         .success { background: #d7ffb8; color: #58cc02; border: 2px solid #58cc02; }
         .error { background: #ffdfe0; color: #ff4b4b; border: 2px solid #ff4b4b; }
         .next-gate-btn { background-color: var(--duo-orange); box-shadow: 0 4px 0 #e08400; }
+        audio { width: 100%; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -39,13 +39,16 @@
 
     <div class="step-card active" id="step1">
         <div class="avatar">🦉</div>
-        <div class="instruction">اضغط على المايك واقرأ العبارة كاملة بصوت واضح:</div>
+        <div class="instruction">اضغط على الزر وسجل قراءتك للعبارة كاملة:</div>
         <div class="content-box">"عادَ طارِقٌ مِنَ الْمَدْرَسَةِ جائِعاً فِي الْمَسَاءِ، ثُمَّ جَلَسَ مَعَ أُسْرَتِهِ لِيَتَنَاوَلَ طَعَاماً لَذِيذاً وَمُفِيداً."</div>
         
-        <div class="live-speech-box" id="liveSpeech">سمعتك تقول: ...</div>
+        <button class="action-btn mic-btn" id="recordBtn" onclick="toggleRecording()">🎤 ابدأ تسجيل صوتك</button>
+        <div id="audioPlaybackContainer" style="display:none; margin-bottom: 15px;">
+            <p style="font-size:14px; color:#555;">استمع لتسجيلك قبل الانتقال:</p>
+            <audio id="audioPlayback" controls></audio>
+        </div>
         
-        <button class="action-btn mic-btn" id="micBtn" onclick="toggleSpeech()">🎤 اضغط وابدأ القراءة</button>
-        <div class="result-msg" id="result1"></div>
+        <button class="action-btn next-gate-btn" id="nextStep1Btn" style="display:none;" onclick="moveStep(2)">تأكيد والانتقال للمحطة التالية</button>
     </div>
 
     <div class="step-card" id="step2">
@@ -64,8 +67,11 @@
 
     <div class="step-card" id="step3">
         <div class="avatar">✍️</div>
-        <div class="instruction">استمع جيداً للكلمة واكتبها إملائياً:</div>
-        <button class="action-btn" style="background:#a600ff; box-shadow:0 4px 0 #8200c8;" onclick="playAudioText()">🔊 استمع للكلمة</button>
+        <div class="instruction">استمع جيداً لصوت المعلم واكتب الكلمة إملائياً:</div>
+        <button class="action-btn" style="background:#a600ff; box-shadow:0 4px 0 #8200c8;" onclick="playDictationAudio()">🔊 استمع للكلمة</button>
+        
+        <audio id="dictationAudio" src="dictation.mp3" preload="auto"></audio>
+        
         <br><br>
         <input type="text" class="dict-input" id="dictationInput" placeholder="اكتب ما سمعته هنا...">
         <button class="action-btn next-gate-btn" onclick="checkDictation()">تحقق من الإملاء</button>
@@ -85,10 +91,11 @@
     let currentStep = 1;
     let selectedSyllables = [];
     const maxErrorsAllowed = 3;
-    let recognition;
+    
+    // متغيرات نظام التسجيل الأصلي للمتصفح
+    let mediaRecorder;
+    let audioChunks = [];
     let isRecording = false;
-
-    const cleanReadingTarget = "عاد طارق من المدرسه جائعا في المساء ثم جلس مع اسرته ليتناول طعاما لذيذا ومفيدا";
 
     function updateErrors() {
         document.getElementById("errorCount").innerText = totalErrors;
@@ -108,104 +115,35 @@
         }
     }
 
-    function toggleSpeech() {
-        window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!window.SpeechRecognition) { 
-            alert("المتصفح لا يدعم التعرف على الصوت على هذا الجهاز، سيتم نقلك للمحطة التالية.");
-            moveStep(2); 
-            return; 
-        }
-
-        const btn = document.getElementById("micBtn");
-        const res = document.getElementById("result1");
-        const liveBox = document.getElementById("liveSpeech");
-
+    // إدارة تسجيل الصوت الفعلي وحفظه
+    function toggleRecording() {
+        const btn = document.getElementById("recordBtn");
         if (!isRecording) {
-            recognition = new SpeechRecognition();
-            recognition.lang = "ar";
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
-            recognition.onstart = () => {
-                isRecording = true;
-                btn.innerText = "🛑 جاري الاستماع.. اضغط هنا للتأكيد";
-                btn.classList.add("recording");
-                liveBox.style.display = "block";
-                liveBox.innerText = "تحدث الآن، جاري التقاط صوتك...";
-                res.style.display = "none";
-            };
-
-            recognition.onresult = (event) => {
-                let interimTranscript = '';
-                let finalTranscript = '';
-
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-
-                let currentSpeechText = finalTranscript || interimTranscript;
-                if(currentSpeechText.trim() !== "") {
-                    liveBox.innerText = "سمعتك تقول: " + currentSpeechText;
-                }
-            };
-
-            recognition.onerror = (e) => { 
-                console.error(e);
-                stopRecordingState();
-            };
-
-            recognition.onend = () => {
-                if(isRecording) {
-                    processSpeechOutput(liveBox.innerText.replace("سمعتك تقول: ", ""));
-                }
-            };
-
-            recognition.start();
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        document.getElementById("audioPlayback").src = audioUrl;
+                        document.getElementById("audioPlaybackContainer").style.display = "block";
+                        document.getElementById("nextStep1Btn").style.display = "block";
+                    };
+                    mediaRecorder.start();
+                    isRecording = true;
+                    btn.innerText = "🛑 أوقف التسجيل وعاين صوتك";
+                    btn.classList.add("recording");
+                }).catch(err => {
+                    alert("برجاء السماح بصلاحية المايك للمتصفح لتتمكن من التسجيل.");
+                });
         } else {
+            mediaRecorder.stop();
             isRecording = false;
-            if(recognition) recognition.stop();
-        }
-    }
-
-    function processSpeechOutput(studentText) {
-        const res = document.getElementById("result1");
-        res.style.display = "block";
-        
-        if(!studentText || studentText.includes("تحدث الآن")) {
-            totalErrors++;
-            updateErrors();
-            res.className = "result-msg error";
-            res.innerHTML = "⚠️ لم يتم التقاط كلمات واضحة. دعنا ننتقل للمحطة التالية.";
-            setTimeout(() => moveStep(2), 2500);
-            stopRecordingState();
-            return;
-        }
-
-        const cleanStudent = studentText.replace(/[^\u0621-\u064A\s]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").trim();
-
-        if(cleanStudent === cleanReadingTarget || cleanReadingTarget.includes(cleanStudent) && cleanStudent.length > 10) {
-            res.className = "result-msg success";
-            res.innerHTML = `🎉 قراءة ممتازة!<br>لقد قرأت بنجاح: "${studentText}"`;
-            setTimeout(() => moveStep(2), 3000);
-        } else {
-            totalErrors++;
-            updateErrors();
-            res.className = "result-msg error";
-            res.innerHTML = `⚠️ قراءتك: "${studentText}"<br>هناك اختلاف بسيط عن النص الأصلي المكتوب.`;
-            setTimeout(() => moveStep(2), 3500);
-        }
-        stopRecordingState();
-    }
-
-    function stopRecordingState() {
-        isRecording = false;
-        const btn = document.getElementById("micBtn");
-        if(btn) {
-            btn.innerText = "🎤 اضغط وابدأ القراءة";
+            btn.innerText = "🎤 إعادة التسجيل";
             btn.classList.remove("recording");
         }
     }
@@ -235,24 +173,13 @@
         }
     }
 
-    function playAudioText() {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            
-            const msg = new SpeechSynthesisUtterance();
-            msg.text = "طَعَاماً لَذِيذاً";
-            msg.lang = "ar-SA";
-            msg.rate = 0.75;
-            msg.volume = 1.0;
-
-            const voices = window.speechSynthesis.getVoices();
-            const arVoice = voices.find(v => v.lang.includes('ar'));
-            if(arVoice) msg.voice = arVoice;
-
-            window.speechSynthesis.speak(msg);
-        } else {
-            alert("خاصية نطق الصوت غير مدعومة في متصفح هذا الجهاز.");
-        }
+    // تشغيل ملف الإملاء الصوتي الحقيقي الثابت
+    function playDictationAudio() {
+        const audio = document.getElementById("dictationAudio");
+        audio.currentTime = 0;
+        audio.play().catch(err => {
+            alert("تأكد من وجود ملف dictation.mp3 في نفس مجلد المستودع.");
+        });
     }
 
     function checkDictation() {
@@ -263,7 +190,7 @@
 
         if(cleanStudent === "طعاما لذيذا") {
             res.className = "result-msg success";
-            res.innerHTML = `✍️ إملاء عبقري وصحيح!<br>لقد كتبت الكلمة المطلوبة: "طَعَاماً لَذِيذاً" بدقة.`;
+            res.innerHTML = `✍️ إملاء صحيح وممتاز!<br>لقد كتبت الكلمة المطلوبة: "طَعَاماً لَذِيذاً" بنجاح.`;
             setTimeout(() => moveStep("Final"), 3000);
         } else {
             totalErrors++;
@@ -289,12 +216,7 @@
     }
 
     function goToNextLevel() {
-        alert("رائع! يتم الآن نقلك لإعادة المستوى لتعزيز المهارات تلقائياً.");
         window.location.reload(); 
-    }
-
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.getVoices();
     }
 </script>
 </body>
