@@ -115,7 +115,7 @@
         }
         
         const recognition = new SpeechRecognition();
-        recognition.lang = "ar-EG";
+        recognition.lang = "ar";
         const btn = document.getElementById("micBtn");
         const res = document.getElementById("result1");
 
@@ -175,7 +175,7 @@
 
     function playAudioText() {
         const msg = new SpeechSynthesisUtterance("طَعَاماً لَذِيذاً");
-        msg.lang = "ar-EG";
+        msg.lang = "ar";
         window.speechSynthesis.speak(msg);
     }
 
