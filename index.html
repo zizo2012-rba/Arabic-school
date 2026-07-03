@@ -26,7 +26,6 @@
         .success { background: #d7ffb8; color: #58cc02; border: 2px solid #58cc02; }
         .error { background: #ffdfe0; color: #ff4b4b; border: 2px solid #ff4b4b; }
         .next-gate-btn { background-color: var(--duo-orange); box-shadow: 0 4px 0 #e08400; }
-        .eval-btn-container { display: flex; gap: 10px; margin-top: 10px; }
         audio { width: 100%; margin-top: 10px; }
     </style>
 </head>
@@ -38,7 +37,7 @@
         <span class="score-badge">❌ الأخطاء: <span id="errorCount">0</span> / 3</span>
     </div>
 
-    <!-- التحدي الأول: التحدي القرائي مع التقييم الذاتي التفاعلي -->
+    <!-- التحدي الأول: التحدي القرائي المطور بالكامل -->
     <div class="step-card active" id="step1">
         <div class="avatar">🦉</div>
         <div class="instruction">اضغط على الزر وسجل قراءتك للعبارة كاملة:</div>
@@ -47,16 +46,13 @@
         <button class="action-btn mic-btn" id="recordBtn" onclick="toggleRecording()">🎤 ابدأ تسجيل صوتك</button>
         
         <div id="audioPlaybackContainer" style="display:none; margin-bottom: 15px;">
-            <p style="font-size:15px; color:#333; font-weight: bold;">🔊 استمع إلى تسجيلك واحكم على قراءتك:</p>
+            <p style="font-size:15px; color:#333; font-weight: bold;">🔊 استمع إلى تسجيلك أولاً:</p>
             <audio id="audioPlayback" controls></audio>
-            
-            <!-- أزرار التحقق التفاعلية الفورية -->
-            <div class="eval-btn-container">
-                <button class="action-btn" style="background:#58cc02; box-shadow: 0 4px 0 #46a302;" onclick="evaluateReading(true)">🟢 قراءتي صحيحة وممتازة</button>
-                <button class="action-btn" style="background:#ff4b4b; box-shadow: 0 4px 0 #ea2b2b;" onclick="evaluateReading(false)">🔴 سأنتقل مع احتساب خطأ</button>
-            </div>
+            <br><br>
+            <button class="action-btn" style="background:#58cc02; box-shadow: 0 4px 0 #46a302;" onclick="checkReadingResult()">🟢 تحقق من قراءتي</button>
         </div>
         <div class="result-msg" id="result1"></div>
+        <button class="action-btn next-gate-btn" id="nextStep1Btn" style="display:none; margin-top: 15px;" onclick="moveStep(2)">الانتقال للتحدي التالي ➡️</button>
     </div>
 
     <!-- التحدي الثاني: ترتيب المقاطع -->
@@ -70,11 +66,12 @@
             <button class="syllable-btn" onclick="selectSyllable(this, 'مَـ')">مَـ</button>
             <button class="syllable-btn" onclick="selectSyllable(this, 'ءِ')">ءِ</button>
         </div>
-        <button class="action-btn next-gate-btn" style="margin-top:15px;" onclick="checkSyllables()">تحقق من الإجابة</button>
+        <button class="action-btn next-gate-btn" id="checkStep2Btn" style="margin-top:15px;" onclick="checkSyllables()">تحقق من الإجابة</button>
         <div class="result-msg" id="result2"></div>
+        <button class="action-btn next-gate-btn" id="nextStep2Btn" style="display:none; margin-top: 15px;" onclick="moveStep(3)">الانتقال للتحدي التالي ➡️</button>
     </div>
 
-    <!-- التحدي الثالث: الإملاء المرن المبسط -->
+    <!-- التحدي الثالث: الإملاء الصوتي المنقح -->
     <div class="step-card" id="step3">
         <div class="avatar">✍️</div>
         <div class="instruction">استمع جيداً لصوت المعلم واكتب الكلمة إملائياً:</div>
@@ -84,8 +81,9 @@
         
         <br><br>
         <input type="text" class="dict-input" id="dictationInput" placeholder="اكتب ما سمعته هنا بدون تشكيل...">
-        <button class="action-btn next-gate-btn" onclick="checkDictation()">تحقق من الإملاء</button>
+        <button class="action-btn next-gate-btn" id="checkStep3Btn" onclick="checkDictation()">تحقق من الإملاء</button>
         <div class="result-msg" id="result3"></div>
+        <button class="action-btn next-gate-btn" id="nextStep3Btn" style="display:none; margin-top: 15px;" onclick="moveStep('Final')">الانتقال لبوابة العبور ➡️</button>
     </div>
 
     <!-- بوابة العبور النهاية -->
@@ -156,22 +154,17 @@
         }
     }
 
-    // منطق التحقق القرائي الجديد والمحفز
-    function evaluateReading(isCorrect) {
+    // إظهار رسالة نجاح واضحة وثابتة في القراءة قبل الانتقال
+    function checkReadingResult() {
         const res = document.getElementById("result1");
         res.style.display = "block";
+        res.className = "result-msg success";
+        res.innerHTML = "🎉 قراءة رائعة وممتازة يا بطل! تم حفظ تسجيلك بنجاح.";
         
-        if(isCorrect) {
-            res.className = "result-msg success";
-            res.innerHTML = "🎉 رائع! تم تسجيل قراءتك بنجاح وبشكل ممتاز.";
-        } else {
-            totalErrors++;
-            updateErrors();
-            res.className = "result-msg error";
-            res.innerHTML = "⚠️ محاولة جيدة! تم حفظ التسجيل والانتقال للتحدي التالي.";
-        }
-        
-        setTimeout(() => moveStep(2), 2500);
+        // إخفاء زر التحقق القديم وإظهار زر الانتقال الصريح
+        document.getElementById("audioPlaybackContainer").style.display = "none";
+        document.getElementById("recordBtn").style.display = "none";
+        document.getElementById("nextStep1Btn").style.display = "block";
     }
 
     function selectSyllable(btn, text) {
@@ -188,14 +181,14 @@
 
         if(studentWord === "الْـمَـسَاءِ") {
             res.className = "result-msg success";
-            res.innerHTML = "🧩 رائع! الترتيب صحيح.";
-            setTimeout(() => moveStep(3), 2000);
+            res.innerHTML = "🧩 رائع وصحيح! الترتيب مظبوط.";
+            document.getElementById("checkStep2Btn").style.display = "none";
+            document.getElementById("nextStep2Btn").style.display = "block";
         } else {
             totalErrors++;
             updateErrors();
             res.className = "result-msg error";
-            res.innerHTML = "❌ الترتيب غير صحيح.";
-            setTimeout(() => moveStep(3), 2000);
+            res.innerHTML = "❌ الترتيب غير صحيح. حاول مرة أخرى!";
         }
     }
 
@@ -207,40 +200,40 @@
         });
     }
 
-    // دالة سحرية لتنظيف النص تماماً من أي تعقيدات إملائية لتسهيل العبور
     function cleanArabicText(text) {
         if (!text) return "";
         return text
-            .replace(/[\u064B-\u0652]/g, "") // مسح كل أنواع التشكيل والتنوين تماماً
-            .replace(/[أإآا]/g, "ا")         // توحيد كل أشكال الألف إلى ألف عادية
-            .replace(/ة/g, "ه")              // مسح الفرق بين التاء المربوطة والهاء
-            .replace(/ى/g, "ي")              // مسح الفرق بين الألف المقصورة والياء
-            .replace(/\s+/g, " ")            // مسح أي مسافات زائدة
+            .replace(/[\u064B-\u0652]/g, "") 
+            .replace(/[أإآا]/g, "ا")         
+            .replace(/ة/g, "ه")              
+            .replace(/ى/g, "ي")              
+            .replace(/\s+/g, " ")            
             .trim();
     }
 
+    // تنظيف رسالة خطأ الإملاء تماماً لتعرض فقط الكلمة الصحيحة المطلوبة بدقة ومباشرة
     function checkDictation() {
         const rawInput = document.getElementById("dictationInput").value;
         const studentClean = cleanArabicText(rawInput);
         
-        // الكلمات الصحيحة المقبولة بعد تجريدها تماماً لتسهيل التصحيح
         const targetClean1 = "طعاما لذيذا";
         const targetClean2 = "طعام لذيذ";
 
         const res = document.getElementById("result3");
         res.style.display = "block";
 
-        // لو كتب الطالب الكلمة صحيحة بأي شكل من الأشكال بدون التقيد التام بالتنوين والتشكيل سينجح
-        if(studentClean === targetClean1 || studentClean === targetClean2 || studentClean.includes("طعام")) {
+        if(studentClean === targetClean1 || studentClean === targetClean2 || (studentClean.includes("طعام") && studentClean.includes("لذيذ"))) {
             res.className = "result-msg success";
             res.innerHTML = `✍️ إجابة صحيحة وممتازة يا بطل! كتبت الكلمة بشكل سليم.`;
-            setTimeout(() => moveStep("Final"), 2500);
+            document.getElementById("checkStep3Btn").style.display = "none";
+            document.getElementById("nextStep3Btn").style.display = "block";
         } else {
             totalErrors++;
             updateErrors();
             res.className = "result-msg error";
-            res.innerHTML = `❌ الكلمة المطلوبة هي: "طَعَاماً لَذِيذاً". حاول التركيز في المرة القادمة!`;
-            setTimeout(() => moveStep("Final"), 3500);
+            res.innerHTML = `❌ الكلمة الصحيحة هي: "طَعَاماً Lَذِيذاً".`;
+            document.getElementById("checkStep3Btn").style.display = "none";
+            document.getElementById("nextStep3Btn").style.display = "block";
         }
     }
 
@@ -249,7 +242,7 @@
         const icon = document.getElementById("finalIcon");
         if(totalErrors <= maxErrorsAllowed) {
             icon.innerText = "🏆";
-            msgBox.innerHTML = `أحسنت يا بطل! لقد عبرت المستوى بنجاح.<br>أخطاؤك: ${totalErrors} من 3.`;
+            msgBox.innerHTML = `أحسنت يا بطل! لقد عبرت المستوى بنجاح.<br>إجمالي الأخطاء: ${totalErrors} من 3.`;
             document.getElementById("nextLevelBtn").style.display = "block";
         } else {
             icon.innerText = "📉";
