@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحدي الأبطال - المستوى المتوسط</title>
+    <title>المدرسة الافتراضية - المستوى المتوسط</title>
     <style>
         :root { --duo-green: #58cc02; --duo-blue: #1cb0f6; --duo-orange: #ff9600; --duo-card: #ffffff; }
         body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; }
@@ -36,14 +36,16 @@
         <span class="score-badge">❌ الأخطاء: <span id="errorCount">0</span> / 3</span>
     </div>
 
+    <!-- التحدي الأول -->
     <div class="step-card active" id="step1">
         <div class="avatar">🦉</div>
-        <div class="instruction">اضغط على المايك واقرأ الفقرة كاملة بصوت واضح:</div>
+        <div class="instruction">اضغط على المايك واقرأ العبارة كاملة بصوت واضح:</div>
         <div class="content-box">"عادَ طارِقٌ مِنَ الْمَدْرَسَةِ جائِعاً فِي الْمَسَاءِ، ثُمَّ جَلَسَ مَعَ أُسْرَتِهِ لِيَتَنَاوَلَ طَعَاماً لَذِيذاً وَمُفِيداً."</div>
         <button class="action-btn mic-btn" id="micBtn" onclick="startSpeech()">🎤 اضغط وابدأ القراءة</button>
         <div class="result-msg" id="result1"></div>
     </div>
 
+    <!-- التحدي الثاني -->
     <div class="step-card" id="step2">
         <div class="avatar">🧩</div>
         <div class="instruction">رتب المقاطع لتكوين كلمة (الْمَسَاءِ):</div>
@@ -58,17 +60,157 @@
         <div class="result-msg" id="result2"></div>
     </div>
 
+    <!-- التحدي الثالث -->
     <div class="step-card" id="step3">
         <div class="avatar">✍️</div>
-        <div class="instruction">استمع جيداً للعبارة واكتبها إملائياً:</div>
+        <div class="instruction">استمع جيداً للكلمة واكتبها إملائياً:</div>
         <button class="action-btn" style="background:#a600ff; box-shadow:0 4px 0 #8200c8;" onclick="playAudioText()">🔊 استمع للكلمة</button>
-        <br>
+        <br><br>
         <input type="text" class="dict-input" id="dictationInput" placeholder="اكتب ما سمعته هنا...">
         <button class="action-btn next-gate-btn" onclick="checkDictation()">تحقق من الإملاء</button>
         <div class="result-msg" id="result3"></div>
     </div>
 
+    <!-- بوابة العبور -->
     <div class="step-card" id="stepFinal">
         <div class="avatar" id="finalIcon">🎉</div>
         <div class="content-box" id="finalMessage">تهانينا يا بطل!</div>
-        <button class="action-btn" id="nextLevelBtn" style="display:none;" onclick
+        <button class="action-btn" id="nextLevelBtn" style="display:none;" onclick="alert('رائع! سيتم فتح المستوى التالي')">🔓 الانتقال للدرس التالي</button>
+        <button class="action-btn" id="retryLevelBtn" style="display:none; background:#ff4b4b; box-shadow:0 4px 0 #ea2b2b;" onclick="location.reload()">🔄 إعادة المحاولة لتعديل الأخطاء</button>
+    </div>
+</div>
+
+<script>
+    let totalErrors = 0;
+    let currentStep = 1;
+    let selectedSyllables = [];
+    const maxErrorsAllowed = 3;
+
+    const cleanReadingTarget = "عاد طارق من المدرسه جائعا في المساء ثم جلس مع اسرته ليتناول طعاما لذيذا ومفيدا";
+
+    function updateErrors() {
+        document.getElementById("errorCount").innerText = totalErrors;
+    }
+
+    function moveStep(nextStep) {
+        document.getElementById("step" + currentStep).classList.remove("active");
+        currentStep = nextStep;
+        if(nextStep === "Final") {
+            document.getElementById("stepFinal").classList.add("active");
+            document.getElementById("currentChallengeName").innerText = "بوابة العبور";
+            evalFinalGate();
+        } else {
+            document.getElementById("step" + nextStep).classList.add("active");
+            const names = ["", "المحطة 1: التحدي القرائي", "المحطة 2: مهندس الكلمات", "المحطة 3: بطل الإملاء"];
+            document.getElementById("currentChallengeName").innerText = names[nextStep];
+        }
+    }
+
+    function startSpeech() {
+        window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!window.SpeechRecognition) { 
+            alert("المتصفح لا يدعم التعرف على الصوت، سيتم نقلك للمحطة التالية تلقائياً.");
+            moveStep(2); 
+            return; 
+        }
+        
+        const recognition = new SpeechRecognition();
+        recognition.lang = "ar-EG";
+        const btn = document.getElementById("micBtn");
+        const res = document.getElementById("result1");
+
+        btn.innerText = "🛑 جاري الاستماع...";
+        btn.classList.add("recording");
+        recognition.start();
+
+        recognition.onresult = (event) => {
+            const studentText = event.results[0][0].transcript;
+            const cleanStudent = studentText.replace(/[^\u0621-\u064A\s]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").trim();
+            res.style.display = "block";
+
+            if(cleanStudent === cleanReadingTarget) {
+                res.className = "result-msg success";
+                res.innerHTML = "🎉 قراءة ممتازة! انتقل للمحطة التالية.";
+                setTimeout(() => moveStep(2), 2000);
+            } else {
+                totalErrors++;
+                updateErrors();
+                res.className = "result-msg error";
+                res.innerHTML = "⚠️ أخطأت في بعض الكلمات. جرب المحطة التالية.";
+                setTimeout(() => moveStep(2), 2500);
+            }
+        };
+        
+        recognition.onerror = () => { 
+            btn.innerText = "🎤 اضغط وابدأ القراءة";
+            btn.classList.remove("recording");
+            moveStep(2); 
+        };
+    }
+
+    function selectSyllable(btn, text) {
+        if(btn.classList.contains("selected")) return;
+        btn.classList.add("selected");
+        selectedSyllables.push(text);
+        document.getElementById("assembledWord").innerText = selectedSyllables.join("");
+    }
+
+    function checkSyllables() {
+        const studentWord = selectedSyllables.join("");
+        const res = document.getElementById("result2");
+        res.style.display = "block";
+
+        if(studentWord === "الْـمَـسَاءِ") {
+            res.className = "result-msg success";
+            res.innerHTML = "🧩 رائع! الترتيب صحيح.";
+            setTimeout(() => moveStep(3), 2000);
+        } else {
+            totalErrors++;
+            updateErrors();
+            res.className = "result-msg error";
+            res.innerHTML = "❌ الترتيب غير صحيح.";
+            setTimeout(() => moveStep(3), 2000);
+        }
+    }
+
+    function playAudioText() {
+        const msg = new SpeechSynthesisUtterance("طَعَاماً لَذِيذاً");
+        msg.lang = "ar-EG";
+        window.speechSynthesis.speak(msg);
+    }
+
+    function checkDictation() {
+        const val = document.getElementById("dictationInput").value;
+        const cleanStudent = val.replace(/[^\u0621-\u064A\s]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").trim();
+        const res = document.getElementById("result3");
+        res.style.display = "block";
+
+        if(cleanStudent === "طعاما لذيذا") {
+            res.className = "result-msg success";
+            res.innerHTML = "✍️ إملاء بطل! كتبت التنوين والمدود صح.";
+            setTimeout(() => moveStep("Final"), 2000);
+        } else {
+            totalErrors++;
+            updateErrors();
+            res.className = "result-msg error";
+            res.innerHTML = "❌ هناك خطأ إملائي في الكلمة.";
+            setTimeout(() => moveStep("Final"), 2000);
+        }
+    }
+
+    function evalFinalGate() {
+        const msgBox = document.getElementById("finalMessage");
+        const icon = document.getElementById("finalIcon");
+        if(totalErrors <= maxErrorsAllowed) {
+            icon.innerText = "🏆";
+            msgBox.innerHTML = `أحسنت يا بطل! لقد عبرت المستوى بنجاح.<br>أخطاؤك: ${totalErrors} من 3.`;
+            document.getElementById("nextLevelBtn").style.display = "block";
+        } else {
+            icon.innerText = "📉";
+            msgBox.innerHTML = `المحاولة رائعة، لكن أخطاءك بلغت ${totalErrors}.<br>دعنا نعد المحاولة لتثبيت المهارات!`;
+            document.getElementById("retryLevelBtn").style.display = "block";
+        }
+    }
+</script>
+</body>
+</html>
