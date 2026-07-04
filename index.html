@@ -15,11 +15,14 @@
         .avatar { font-size: 50px; margin-bottom: 10px; }
         .instruction { font-size: 16px; color: #777; margin-bottom: 10px; }
         .content-box { font-size: 22px; color: #3c3c3c; font-weight: bold; background: #f7f7f7; padding: 15px; border-radius: 16px; border: 2px solid #e5e5e5; margin-bottom: 20px; line-height: 1.6; text-align: center; }
-        .live-speech-box { font-size: 18px; color: #1cb0f6; font-style: italic; background: #eef9ff; padding: 15px; border-radius: 12px; border: 2px dashed #1cb0f6; margin-bottom: 15px; min-height: 50px; display: none; line-height: 1.5; }
-        .action-btn { background-color: var(--duo-blue); color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 16px; cursor: pointer; font-weight: bold; width: 100%; box-shadow: 0 4px 0 #1899d6; transition: 0.1s; margin-bottom: 10px; box-sizing: border-box; }
+        
+        /* صندوق قراءة دولينجو التفاعلي */
+        .live-speech-box { font-size: 20px; color: #58cc02; font-weight: bold; background: #f8fff0; padding: 15px; border-radius: 16px; border: 2px dashed #58cc02; margin-bottom: 15px; min-height: 60px; display: none; line-height: 1.6; text-align: center; word-wrap: break-word; }
+        
+        .action-btn { border: none; padding: 14px 28px; font-size: 18px; border-radius: 16px; cursor: pointer; font-weight: bold; width: 100%; box-shadow: 0 4px 0 #1899d6; transition: 0.1s; margin-bottom: 10px; box-sizing: border-box; }
         .action-btn:active { transform: translateY(4px); box-shadow: none; }
-        .mic-btn { background-color: var(--duo-green); box-shadow: 0 4px 0 #46a302; }
-        .mic-btn.recording { background-color: #ff4b4b; box-shadow: 0 4px 0 #ea2b2b; }
+        .mic-btn { background-color: var(--duo-blue); color: white; box-shadow: 0 4px 0 #1899d6; }
+        .mic-btn.recording { background-color: #ff4b4b; color: white; box-shadow: 0 4px 0 #ea2b2b; }
         .syllable-btn { display: inline-block; background: #fff; border: 2px solid #e5e5e5; padding: 10px 20px; font-size: 18px; font-weight: bold; border-radius: 12px; margin: 5px; cursor: pointer; box-shadow: 0 3px 0 #e5e5e5; }
         .syllable-btn.selected { background: #e5e5e5; color: #aaa; cursor: not-allowed; box-shadow: none; transform: translateY(3px); }
         .dict-input { width: 100%; padding: 12px; font-size: 18px; border-radius: 12px; border: 2px solid #e5e5e5; text-align: center; margin-bottom: 15px; box-sizing: border-box; }
@@ -28,7 +31,7 @@
         .warning-feedback { background: #fff3cd; color: #856404; border: 2px solid #ffeeba; }
         .error { background: #ffdfe0; color: #ff4b4b; border: 2px solid #ff4b4b; }
         .wrong-word { color: #ff4b4b; text-decoration: underline; font-weight: bold; }
-        .next-gate-btn { background-color: var(--duo-orange); box-shadow: 0 4px 0 #e08400; }
+        .next-gate-btn { background-color: var(--duo-orange); color: white; box-shadow: 0 4px 0 #e08400; }
         audio { width: 100%; margin-top: 10px; }
     </style>
 </head>
@@ -41,11 +44,11 @@
     </div>
 
     <div class="step-card active" id="step1">
-        <div class="avatar">🦉</div>
+        <div class="avatar"> Owl 🦉</div>
         <div class="instruction">اضغط على المايك واقرأ العبارة كاملة بصوت واضح:</div>
         <div class="content-box">"عادَ طارِقٌ مِنَ الْمَدْرَسَةِ جائِعاً فِي الْمَسَاءِ، ثُمَّ جَلَسَ مَعَ أُسْرَتِهِ لِيَتَنَاوَلَ طَعَاماً لَذِيذاً وَمُفِيداً."</div>
         
-        <div class="live-speech-box" id="liveSpeech">جاري تشغيل المايك...</div>
+        <div class="live-speech-box" id="liveSpeech"></div>
         
         <button class="action-btn mic-btn" id="micBtn" onclick="toggleSpeech()">🎤 اضغط وابدأ القراءة</button>
         <div class="result-msg" id="result1"></div>
@@ -70,7 +73,7 @@
     <div class="step-card" id="step3">
         <div class="avatar">✍️</div>
         <div class="instruction">استمع جيداً لصوت المعلم واكتب الكلمة إملائياً:</div>
-        <button class="action-btn" style="background:#a600ff; box-shadow:0 4px 0 #8200c8;" onclick="playDictationAudio()">🔊 استمع للكلمة</button>
+        <button class="action-btn" style="background:#a600ff; color:white; box-shadow:0 4px 0 #8200c8;" onclick="playDictationAudio()">🔊 استمع للكلمة</button>
         
         <audio id="dictationAudio" src="dictation.mp3" preload="auto"></audio>
         
@@ -84,7 +87,7 @@
     <div class="step-card" id="stepFinal">
         <div class="avatar">🏆</div>
         <div class="content-box">تهانينا يا بطل! لقد أنهيت جميع التحديات بنجاح واقتدار. 🎉</div>
-        <button class="action-btn" onclick="window.location.reload()">🔓 الانتقال للدرس التالي</button>
+        <button class="action-btn next-gate-btn" onclick="window.location.reload()">🔓 الانتقال للدرس التالي</button>
     </div>
 </div>
 
@@ -94,6 +97,7 @@
     let selectedSyllables = [];
     let recognition;
     let isRecording = false;
+    let finalTranscript = ""; // لتجميع الكلمات المؤكدة فقط
 
     function cleanText(text) {
         if (!text) return "";
@@ -119,7 +123,7 @@
         }
     }
 
-    // لقط الكلمات وعرض الصندوق الأزرق فوراً بنسبة 100%
+    // إدارة ميكروفون دولينجو الحقيقي (ظهور الكلمات تزامناً مع النطق)
     function toggleSpeech() {
         window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const btn = document.getElementById("micBtn");
@@ -137,30 +141,37 @@
 
         if (!isRecording) {
             recognition = new SpeechRecognition();
-            recognition.lang = "ar";
+            recognition.lang = "ar-EG"; 
             recognition.continuous = true;
-            recognition.interimResults = true; // خاصية لقط الكلام أثناء النطق فوراً
+            recognition.interimResults = true; // تفعيل لقط الكلمات فوراً أثناء خروجها من الفم
+            finalTranscript = ""; 
 
             recognition.onstart = () => {
                 isRecording = true;
                 btn.innerText = "🟢 انتهيت من القراءة.. تحقق الآن";
-                btn.classList.add("recording");
+                btn.className = "action-btn mic-btn recording";
                 
-                // إظهار مربع القراءة فوراً وتجهيزه
+                // تصفير وفتح الصندوق ليكون مستعداً لاستقبال الكلمات واحدة تلو الأخرى
+                liveBox.innerText = "";
                 liveBox.style.display = "block";
-                liveBox.innerText = "أنا أسمعك الآن، ابدأ بقراءة النص...";
                 res.style.display = "none";
             };
 
             recognition.onresult = (event) => {
-                let currentSpeechText = '';
-                for (let i = 0; i < event.results.length; ++i) {
-                    currentSpeechText += event.results[i][0].transcript + " ";
+                let interimTranscript = "";
+                
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + " ";
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
                 }
                 
-                // تحديث المربع الأزرق بكل الكلمات المنطوقة ثانية بثانية
-                if(currentSpeechText.trim() !== "") {
-                    liveBox.innerText = "الكلمات التي قرأتها: " + currentSpeechText;
+                // عرض الكلمات الحالية والمؤكدة بالتزامن مع النطق تماماً دون أي تأخير
+                let totalCurrentSpeech = finalTranscript + interimTranscript;
+                if(totalCurrentSpeech.trim() !== "") {
+                    liveBox.innerText = totalCurrentSpeech.trim();
                 }
             };
 
@@ -169,12 +180,12 @@
 
             recognition.start();
         } else {
+            // عند الضغط على "انتهيت من القراءة" يتم إغلاق المايك وإصدار التغذية الراجعة المشجعة
             isRecording = false;
             if(recognition) {
                 recognition.stop();
             }
             
-            // التغذية الراجعة بعد الضغط اليدوي
             res.style.display = "block";
             res.className = "result-msg success";
             res.innerHTML = "🎉 قراءة رائعة وممتازة يا بطل! تم حفظ المحاولة بنجاح ونطقك مفهوم وسليم.";
