@@ -45,7 +45,7 @@
         <div class="instruction">اضغط على المايك واقرأ العبارة كاملة بصوت واضح:</div>
         <div class="content-box">"عادَ طارِقٌ مِنَ الْمَدْرَسَةِ جائِعاً فِي الْمَسَاءِ، ثُمَّ جَلَسَ مَعَ أُسْرَتِهِ لِيَتَنَاوَلَ طَعَاماً لَذِيذاً وَمُفِيداً."</div>
         
-        <div class="live-speech-box" id="liveSpeech">...</div>
+        <div class="live-speech-box" id="liveSpeech">جاري تشغيل المايك...</div>
         
         <button class="action-btn mic-btn" id="micBtn" onclick="toggleSpeech()">🎤 اضغط وابدأ القراءة</button>
         <div class="result-msg" id="result1"></div>
@@ -94,7 +94,6 @@
     let selectedSyllables = [];
     let recognition;
     let isRecording = false;
-    let fullTranscript = ""; // لحفظ النص المقروء كاملاً دون تقطيع آلي
 
     function cleanText(text) {
         if (!text) return "";
@@ -120,7 +119,7 @@
         }
     }
 
-    // لقط الكلمات حياً ومنع التقييم التلقائي المبكر
+    // لقط الكلمات وعرض الصندوق الأزرق فوراً بنسبة 100%
     function toggleSpeech() {
         window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const btn = document.getElementById("micBtn");
@@ -140,54 +139,42 @@
             recognition = new SpeechRecognition();
             recognition.lang = "ar";
             recognition.continuous = true;
-            recognition.interimResults = true;
-            fullTranscript = ""; // تصفير النص عند بداية كل محاولة
+            recognition.interimResults = true; // خاصية لقط الكلام أثناء النطق فوراً
 
             recognition.onstart = () => {
                 isRecording = true;
                 btn.innerText = "🟢 انتهيت من القراءة.. تحقق الآن";
                 btn.classList.add("recording");
+                
+                // إظهار مربع القراءة فوراً وتجهيزه
                 liveBox.style.display = "block";
-                liveBox.innerText = "أنا أسمعك الآن، ابدأ بقراءة النص كاملاً...";
+                liveBox.innerText = "أنا أسمعك الآن، ابدأ بقراءة النص...";
                 res.style.display = "none";
             };
 
             recognition.onresult = (event) => {
-                let interimTranscript = '';
-                let currentSessionText = '';
-
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        fullTranscript += event.results[i][0].transcript + " ";
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
+                let currentSpeechText = '';
+                for (let i = 0; i < event.results.length; ++i) {
+                    currentSpeechText += event.results[i][0].transcript + " ";
                 }
-
-                currentSessionText = fullTranscript + interimTranscript;
-                if(currentSessionText.trim() !== "") {
-                    // إظهار جميع الكلمات التي يقرأها الطالب حياً أمام عينه أولاً بأول
-                    liveBox.innerText = "الكلمات التي قرأتها: " + currentSessionText;
+                
+                // تحديث المربع الأزرق بكل الكلمات المنطوقة ثانية بثانية
+                if(currentSpeechText.trim() !== "") {
+                    liveBox.innerText = "الكلمات التي قرأتها: " + currentSpeechText;
                 }
             };
 
-            recognition.onerror = () => { 
-                // في حال حدوث خطأ مفاجئ لا نغلق التحدي بل نسمح له بالتحقق
-                isRecording = false; 
-            };
-            
-            // تم إلغاء معالج الـ onend التلقائي القديم لضمان عدم حدوث تقييم آلي مفاجئ
+            recognition.onerror = () => { isRecording = false; };
             recognition.onend = () => { };
 
             recognition.start();
         } else {
-            // هنا يضغط المعلم أو الطالب بعد الفراغ الكامل من القراءة للتحقق يدوياً وبدقة
             isRecording = false;
             if(recognition) {
                 recognition.stop();
             }
             
-            // إظهار التغذية الراجعة الفورية والنهائية بعد التأكيد
+            // التغذية الراجعة بعد الضغط اليدوي
             res.style.display = "block";
             res.className = "result-msg success";
             res.innerHTML = "🎉 قراءة رائعة وممتازة يا بطل! تم حفظ المحاولة بنجاح ونطقك مفهوم وسليم.";
